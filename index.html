@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduMind — Smart Learning Assistant</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .flashcard-container { perspective: 1000px; }
+        .flashcard { transition: transform 0.6s; transform-style: preserve-3d; }
+        .flashcard.flipped { transform: rotateY(180deg); }
+        .flashcard-face { backface-visibility: hidden; }
+        .flashcard-back { transform: rotateY(180deg); }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="bg-indigo-600 text-white p-2 rounded-xl shadow-sm">
+                    <i data-lucide="brain" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-slate-900">Edu<span class="text-indigo-600">Mind</span></h1>
+                    <p class="text-[11px] text-slate-500 -mt-1 font-medium">Smart Learning Assistant</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="hidden sm:flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-700">
+                    <i data-lucide="award" class="w-4 h-4"></i>
+                    <span>XP: <span id="nav-xp">0</span></span>
+                </div>
+                <button onclick="switchTab('timer')" class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition shadow-sm">
+                    <i data-lucide="clock" class="w-4 h-4 text-indigo-400"></i>
+                    <span>Pomodoro</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content & Navigasi -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Tab Menu Utama -->
+        <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 mb-8 bg-white p-2 rounded-2xl border border-slate-200/80 shadow-sm" id="main-tabs">
+            <button onclick="switchTab('summary')" data-tab="summary" class="tab-btn flex flex-col items-center justify-center py-3 px-2 rounded-xl text-xs font-semibold transition bg-indigo-600 text-white shadow-sm">
+                <i data-lucide="file-text" class="w-4 h-4 mb-1"></i> Rangkuman
+            </button>
+            <button onclick="switchTab('quiz-gen')" data-tab="quiz-gen" class="tab-btn flex flex-col items-center justify-center py-3 px-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
+                <i data-lucide="help-circle" class="w-4 h-4 mb-1"></i> Generator Soal
+            </button>
+            <button onclick="switchTab('quiz-interative')" data-tab="quiz-interative" class="tab-btn flex flex-col items-center justify-center py-3 px-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
+                <i data-lucide="gamepad-2" class="w-4 h-4 mb-1"></i> Kuis Interaktif
+            </button>
+            <button onclick="switchTab('flashcard')" data-tab="flashcard" class="tab-btn flex flex-col items-center justify-center py-3 px-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
+                <i data-lucide="layers" class="w-4 h-4 mb-1"></i> Flashcard
+            </button>
+            <button onclick="switchTab('progress')" data-tab="progress" class="tab-btn flex flex-col items-center justify-center py-3 px-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
+                <i data-lucide="trending-up" class="w-4 h-4 mb-1"></i> Progress
+            </button>
+            <button onclick="switchTab('timer')" data-tab="timer" class="tab-btn flex flex-col items-center justify-center py-3 px-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
+                <i data-lucide="timer" class="w-4 h-4 mb-1"></i> Timer Pomodoro
+            </button>
+        </div>
+
+        <!-- 1. FITUR: RANGKUMAN MATERI -->
+        <section id="section-summary" class="app-section space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                        <i data-lucide="file-text" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Smart Summarizer (Rangkuman Materi)</h2>
+                        <p class="text-xs text-slate-500">Tempel teks panjang atau catatan materi untuk diringkas otomatis menjadi poin-poin penting.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Teks Materi / Artikel</label>
+                        <textarea id="summary-input" rows="6" placeholder="Tempel materi pelajaran, artikel sejarah, atau catatan kuliah di sini..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></textarea>
+                    </div>
+                    <button onclick="generateSummary()" class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition text-sm w-full sm:w-auto shadow-sm">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i> Buat Rangkuman Pintar
+                    </button>
+                </div>
+
+                <!-- Hasil Rangkuman -->
+                <div id="summary-result" class="mt-6 hidden border-t border-slate-100 pt-6 space-y-4">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i> Hasil Rangkuman Inti:
+                    </h3>
+                    <div id="summary-content" class="bg-indigo-50/50 border border-indigo-100 p-5 rounded-xl text-sm text-slate-700 space-y-3 leading-relaxed"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. FITUR: GENERATOR SOAL LATIHAN -->
+        <section id="section-quiz-gen" class="app-section hidden space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <i data-lucide="help-circle" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Generator Soal Latihan Otomatis</h2>
+                        <p class="text-xs text-slate-500">Masukkan topik atau materi, sistem akan membuatkan soal latihan pilihan ganda beserta kunci jawabannya.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Topik atau Ringkasan Materi</label>
+                        <input type="text" id="gen-topic" placeholder="Contoh: Sistem Pencernaan Manusia, Sejarah Kemerdekaan, Hukum Newton..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm">
+                    </div>
+                    <button onclick="generatePracticeQuestions()" class="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-xl transition text-sm w-full sm:w-auto shadow-sm">
+                        <i data-lucide="zap" class="w-4 h-4"></i> Generate Soal Latihan
+                    </button>
+                </div>
+
+                <!-- Hasil Generator Soal -->
+                <div id="gen-result" class="mt-6 hidden border-t border-slate-100 pt-6 space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-slate-800">Daftar Soal Latihan:</h3>
+                        <button onclick="sendToInteractiveQuiz()" class="text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i> Mainkan Sebagai Kuis Interaktif
+                        </button>
+                    </div>
+                    <div id="gen-questions-list" class="space-y-4"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. FITUR: KUIS INTERAKTIF -->
+        <section id="section-quiz-interative" class="app-section hidden space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm max-w-2xl mx-auto">
+                <div id="quiz-start-screen" class="text-center py-8 space-y-4">
+                    <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                        <i data-lucide="gamepad-2" class="w-8 h-8"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900">Kuis Interaktif EduMind</h2>
+                    <p class="text-sm text-slate-500 max-w-md mx-auto">Uji pemahaman belajarmu sekarang. Selesaikan kuis untuk mendapatkan XP dan meningkatkan statistik belajarmu!</p>
+                    <button onclick="startInteractiveQuiz()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-xl transition text-sm shadow-sm inline-flex items-center gap-2">
+                        <i data-lucide="play" class="w-4 h-4"></i> Mulai Kuis Sekarang
+                    </button>
+                </div>
+
+                <div id="quiz-play-screen" class="hidden space-y-6">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <span id="quiz-progress-text" class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Soal 1 dari 5</span>
+                        <span id="quiz-score-badge" class="text-xs font-semibold bg-slate-100 text-slate-700 px-3 py-1 rounded-full">Skor: 0</span>
+                    </div>
+
+                    <div>
+                        <h3 id="quiz-question" class="text-base font-bold text-slate-900 mb-4">Pertanyaan akan muncul di sini...</h3>
+                        <div id="quiz-options" class="space-y-3"></div>
+                    </div>
+
+                    <div id="quiz-feedback" class="hidden p-4 rounded-xl text-xs font-semibold"></div>
+
+                    <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="hidden w-full bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-semibold transition text-sm">
+                        Pertanyaan Selanjutnya
+                    </button>
+                </div>
+
+                <div id="quiz-finish-screen" class="hidden text-center py-8 space-y-4">
+                    <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                        <i data-lucide="trophy" class="w-8 h-8"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900">Kuis Selesai! 🎉</h2>
+                    <p id="quiz-final-score" class="text-sm text-slate-600 font-semibold"></p>
+                    <button onclick="resetQuiz()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition text-sm shadow-sm">
+                        Coba Lagi
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. FITUR: FLASHCARD OTOMATIS DARI TEKS -->
+        <section id="section-flashcard" class="app-section hidden space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm max-w-xl mx-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Auto Flashcard Generator</h2>
+                        <p class="text-xs text-slate-500">Ubah teks catatanmu menjadi kartu hafalan interaktif tanya-jawab.</p>
+                    </div>
+                    <button onclick="openFlashcardCreator()" class="text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3.5 py-2 rounded-xl transition">
+                        + Buat Kartu Baru
+                    </button>
+                </div>
+
+                <!-- Input Buat Flashcard Baru -->
+                <div id="flashcard-creator-box" class="hidden mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Pertanyaan / Istilah (Depan)</label>
+                        <input type="text" id="fc-front" placeholder="Contoh: Apa kepanjangan dari CPU?" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Jawaban / Penjelasan (Belakang)</label>
+                        <input type="text" id="fc-back" placeholder="Contoh: Central Processing Unit" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none">
+                    </div>
+                    <button onclick="addNewFlashcard()" class="w-full bg-indigo-600 text-white text-xs font-semibold py-2.5 rounded-lg">Simpan Kartu</button>
+                </div>
+
+                <!-- Tampilan Kartu Flashcard Interaktif -->
+                <div class="flashcard-container w-full h-64 cursor-pointer my-6" onclick="flipFlashcard()">
+                    <div id="flashcard-card" class="flashcard relative w-full h-full rounded-2xl shadow-sm border border-slate-200">
+                        <!-- Sisi Depan -->
+                        <div class="flashcard-face absolute inset-0 bg-white rounded-2xl p-6 flex flex-col justify-between items-center text-center">
+                            <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider bg-indigo-50 px-2.5 py-1 rounded-full">Pertanyaan (Klik untuk lihat jawaban)</span>
+                            <p id="fc-display-front" class="text-base font-bold text-slate-800 my-auto">Pancasila terdiri dari berapa sila?</p>
+                            <span class="text-xs text-slate-400">Kartu <span id="fc-current-idx">1</span> dari <span id="fc-total">3</span></span>
+                        </div>
+                        <!-- Sisi Belakang -->
+                        <div class="flashcard-face flashcard-back absolute inset-0 bg-indigo-900 text-white rounded-2xl p-6 flex flex-col justify-between items-center text-center">
+                            <span class="text-[10px] font-bold text-indigo-200 uppercase tracking-wider bg-indigo-800 px-2.5 py-1 rounded-full">Jawaban</span>
+                            <p id="fc-display-back" class="text-base font-bold text-indigo-100 my-auto">5 Sila</p>
+                            <span class="text-xs text-indigo-300">Klik untuk kembali</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tombol Navigasi Flashcard -->
+                <div class="flex items-center justify-between">
+                    <button onclick="prevFlashcard()" class="flex items-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i> Sebelumnya
+                    </button>
+                    <button onclick="nextFlashcard()" class="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl transition">
+                        Selanjutnya <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. FITUR: PROGRESS BELAJAR -->
+        <section id="section-progress" class="app-section hidden space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm max-w-3xl mx-auto">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
+                        <i data-lucide="trending-up" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Statistik & Progress Belajar</h2>
+                        <p class="text-xs text-slate-500">Pantau aktivitas belajar, penguasaan materi, dan pencapaian XP harianmu.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-slate-50 border border-slate-200/80 p-5 rounded-2xl">
+                        <p class="text-xs font-semibold text-slate-500 uppercase">Total XP Belajar</p>
+                        <p id="stat-xp" class="text-3xl font-extrabold text-indigo-600 mt-1">0</p>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200/80 p-5 rounded-2xl">
+                        <p class="text-xs font-semibold text-slate-500 uppercase">Kuis Diselesaikan</p>
+                        <p id="stat-quiz-count" class="text-3xl font-extrabold text-slate-900 mt-1">0</p>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200/80 p-5 rounded-2xl">
+                        <p class="text-xs font-semibold text-slate-500 uppercase">Sesi Pomodoro</p>
+                        <p id="stat-pomodoro-count" class="text-3xl font-extrabold text-emerald-600 mt-1">0</p>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <h3 class="text-sm font-bold text-slate-800">Target Belajar Mingguan</h3>
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-slate-600">Penyelesaian Modul & Kuis</span>
+                            <span id="progress-percent" class="text-indigo-600">40%</span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                            <div id="progress-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-500" style="width: 40%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. FITUR: TIMER POMODORO -->
+        <section id="section-timer" class="app-section hidden space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm max-w-md mx-auto text-center">
+                <div class="flex items-center justify-center gap-2 mb-4">
+                    <button onclick="setTimerMode('work')" id="mode-work-btn" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-indigo-600 text-white transition">Fokus (25m)</button>
+                    <button onclick="setTimerMode('break')" id="mode-break-btn" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 transition">Istirahat (5m)</button>
+                </div>
+
+                <div class="my-8">
+                    <div id="timer-display" class="text-6xl font-black tracking-tight text-slate-900 font-mono">25:00</div>
+                    <p id="timer-status" class="text-xs font-semibold text-slate-400 mt-2 uppercase tracking-wider">Waktunya Fokus Belajar!</p>
+                </div>
+
+                <div class="flex items-center justify-center gap-3">
+                    <button onclick="toggleTimer()" id="timer-toggle-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3.5 px-6 rounded-xl transition text-sm shadow-sm flex items-center justify-center gap-2">
+                        <i data-lucide="play" class="w-4 h-4"></i> Mulai Timer
+                    </button>
+                    <button onclick="resetTimer()" class="p-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition">
+                        <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Notifikasi Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-2">
+        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+        <span id="toast-msg">Berhasil!</span>
+    </div>
+
+    <script>
+        // Inisialisasi Ikon
+        lucide.createIcons();
+
+        // State Aplikasi (Tersimpan di LocalStorage)
+        let appData = JSON.parse(localStorage.getItem('edumind_data')) || {
+            xp: 0,
+            quizCount: 0,
+            pomodoroCount: 0,
+            flashcards: [
+                { front: "Apa ibu kota negara Indonesia?", back: "Jakarta" },
+                { front: "Rumus kecepatan dalam fisika?", back: "Jarak dibagi Waktu (v = s/t)" },
+                { front: "Siapa penemu lampu pijar?", back: "Thomas Alva Edison" }
+            ]
+        };
+
+        function saveData() {
+            localStorage.setItem('edumind_data', JSON.stringify(appData));
+            updateStatsUI();
+        }
+
+        function updateStatsUI() {
+            document.getElementById('nav-xp').innerText = appData.xp;
+            document.getElementById('stat-xp').innerText = appData.xp;
+            document.getElementById('stat-quiz-count').innerText = appData.quizCount;
+            document.getElementById('stat-pomodoro-count').innerText = appData.pomodoroCount;
+        }
+        updateStatsUI();
+
+        // Navigasi Tab
+        function switchTab(tabId) {
+            document.querySelectorAll('.app-section').forEach(sec => sec.classList.add('hidden'));
+            document.getElementById(`section-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.dataset.tab === tabId) {
+                    btn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+                    btn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+                } else {
+                    btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
+                    btn.classList.add('text-slate-600', 'hover:bg-slate-100');
+                }
+            });
+            lucide.createIcons();
+        }
+
+        // 1. FITUR: RANGKUMAN MATERI
+        function generateSummary() {
+            const text = document.getElementById('summary-input').value.trim();
+            if (!text) {
+                showToast('Masukkan teks materi terlebih dahulu!');
+                return;
+            }
+
+            // Simulasi pemrosesan ringkasan pintar
+            const sentences = text.split('. ').filter(Boolean);
+            const summaryBox = document.getElementById('summary-content');
+            
+            let htmlList = '<ul class="list-disc pl-5 space-y-2">';
+            const limit = Math.min(sentences.length, 4);
+            for (let i = 0; i < limit; i++) {
+                htmlList += `<li><strong>Poin Penting ${i+1}:</strong> ${sentences[i]}.</li>`;
+            }
+            htmlList += '</ul>';
+
+            summaryBox.innerHTML = htmlList;
+            document.getElementById('summary-result').classList.remove('hidden');
+            
+            appData.xp += 10;
+            saveData();
+            showToast('Rangkuman berhasil dibuat! (+10 XP)');
+        }
+
+        // 2. FITUR: GENERATOR SOAL LATIHAN
+        let generatedQuestionsStore = [];
+        function generatePracticeQuestions() {
+            const topic = document.getElementById('gen-topic').value.trim();
+            if (!topic) {
+                showToast('Masukkan topik materi terlebih dahulu!');
+                return;
+            }
+
+            // Data soal otomatis berbasis topik
+            generatedQuestionsStore = [
+                { q: `Apa inti utama yang dipelajari dalam topik ${topic}?`, options: ["Konsep dasar & fungsi", "Hanya sejarah", "Tidak ada kaitan", "Rumus acak"], correct: 0 },
+                { q: `Manakah pernyataan yang paling tepat mengenai ${topic}?`, options: ["Memiliki peran penting dalam bidangnya", "Merupakan teori usang", "Tidak dapat dianalisis", "Hanya asumsi"], correct: 0 },
+                { q: `Bagaimana penerapan praktis dari ${topic}?`, options: ["Digunakan dalam pemecahan masalah nyata", "Diabaikan dalam praktik", "Hanya teori", "Tidak relevan"], correct: 0 }
+            ];
+
+            const listContainer = document.getElementById('gen-questions-list');
+            listContainer.innerHTML = generatedQuestionsStore.map((item, idx) => `
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <p class="text-sm font-bold text-slate-800">Soal ${idx+1}: ${item.q}</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        ${item.options.map((opt, oIdx) => `
+                            <div class="text-xs p-2.5 rounded-lg border ${oIdx === item.correct ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-semibold' : 'bg-white border-slate-200 text-slate-600'}">
+                                ${String.fromCharCode(65+oIdx)}. ${opt} ${oIdx === item.correct ? '✓ (Kunci)' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('gen-result').classList.remove('hidden');
+            appData.xp += 15;
+            saveData();
+            showToast('Soal latihan berhasil digenerate! (+15 XP)');
+        }
+
+        function sendToInteractiveQuiz() {
+            if (generatedQuestionsStore.length > 0) {
+                activeQuizQuestions = generatedQuestionsStore;
+            } else {
+                activeQuizQuestions = defaultQuizQuestions;
+            }
+            switchTab('quiz-interative');
+            startInteractiveQuiz();
+        }
+
+        // 3. FITUR: KUIS INTERAKTIF
+        const defaultQuizQuestions = [
+            { q: "Apa fungsi utama dari organ jantung pada manusia?", options: ["Memompa darah ke seluruh tubuh", "Menyerap sari makanan", "Menyaring racun", "Memproduksi empedu"], correct: 0 },
+            { q: "Tahun berapa Indonesia memproklamirkan kemerdekaannya?", options: ["1942", "1945", "1950", "1908"], correct: 1 },
+            { q: "Hasil dari 15 x 4 adalah...", options: ["45", "50", "60", "75"], correct: 2 }
+        ];
+        let activeQuizQuestions = defaultQuizQuestions;
+        let currentQuizIdx = 0;
+        let currentScore = 0;
+
+        function startInteractiveQuiz() {
+            currentQuizIdx = 0;
+            currentScore = 0;
+            document.getElementById('quiz-start-screen').classList.add('hidden');
+            document.getElementById('quiz-finish-screen').classList.add('hidden');
+            document.getElementById('quiz-play-screen').classList.remove('hidden');
+            loadQuizQuestion();
+        }
+
+        function loadQuizQuestion() {
+            const q = activeQuizQuestions[currentQuizIdx];
+            document.getElementById('quiz-progress-text').innerText = `Soal ${currentQuizIdx + 1} dari ${activeQuizQuestions.length}`;
+            document.getElementById('quiz-score-badge').innerText = `Skor: ${currentScore}`;
+            document.getElementById('quiz-question').innerText = q.q;
+            
+            const optContainer = document.getElementById('quiz-options');
+            optContainer.innerHTML = q.options.map((opt, idx) => `
+                <button onclick="selectQuizAnswer(${idx})" class="w-full text-left p-3.5 rounded-xl border border-slate-200 hover:border-indigo-500 bg-slate-50 hover:bg-indigo-50/50 text-sm font-medium transition text-slate-700">
+                    ${String.fromCharCode(65 + idx)}. ${opt}
+                </button>
+            `).join('');
+
+            document.getElementById('quiz-feedback').classList.add('hidden');
+            document.getElementById('quiz-next-btn').classList.add('hidden');
+        }
+
+        function selectQuizAnswer(selectedIndex) {
+            const q = activeQuizQuestions[currentQuizIdx];
+            const feedback = document.getElementById('quiz-feedback');
+            feedback.classList.remove('hidden');
+
+            if (selectedIndex === q.correct) {
+                currentScore += 20;
+                feedback.className = "p-4 rounded-xl text-xs font-semibold bg-emerald-50 border border-emerald-200 text-emerald-800";
+                feedback.innerHTML = "Jawaban Benar! 🎉";
+            } else {
+                feedback.className = "p-4 rounded-xl text-xs font-semibold bg-rose-50 border border-rose-200 text-rose-800";
+                feedback.innerHTML = `Jawaban Kurang Tepat. Jawaban yang benar adalah: ${q.options[q.correct]}`;
+            }
+
+            // Disable all option buttons
+            const buttons = document.querySelectorAll('#quiz-options button');
+            buttons.forEach(btn => btn.disabled = true);
+
+            document.getElementById('quiz-next-btn').classList.remove('hidden');
+        }
+
+        function nextQuizQuestion() {
+            currentQuizIdx++;
+            if (currentQuizIdx < activeQuizQuestions.length) {
+                loadQuizQuestion();
+            } else {
+                document.getElementById('quiz-play-screen').classList.add('hidden');
+                document.getElementById('quiz-finish-screen').classList.remove('hidden');
+                document.getElementById('quiz-final-score').innerText = `Kamu memperoleh total skor ${currentScore} poin!`;
+                
+                appData.xp += currentScore;
+                appData.quizCount += 1;
+                saveData();
+            }
+        }
+
+        function resetQuiz() {
+            document.getElementById('quiz-finish-screen').classList.add('hidden');
+            document.getElementById('quiz-start-screen').classList.remove('hidden');
+        }
+
+        // 4. FITUR: FLASHCARD OTOMATIS
+        let currentFcIdx = 0;
+        let isFlipped = false;
+
+        function renderFlashcard() {
+            const fc = appData.flashcards[currentFcIdx];
+            document.getElementById('fc-display-front').innerText = fc.front;
+            document.getElementById('fc-display-back').innerText = fc.back;
+            document.getElementById('fc-current-idx').innerText = currentFcIdx + 1;
+            document.getElementById('fc-total').innerText = appData.flashcards.length;
+            
+            if (isFlipped) {
+                document.getElementById('flashcard-card').classList.remove('flipped');
+                isFlipped = false;
+            }
+        }
+        renderFlashcard();
+
+        function flipFlashcard() {
+            const card = document.getElementById('flashcard-card');
+            card.classList.toggle('flipped');
+            isFlipped = !isFlipped;
+        }
+
+        function nextFlashcard() {
+            currentFcIdx = (currentFcIdx + 1) % appData.flashcards.length;
+            renderFlashcard();
+        }
+
+        function prevFlashcard() {
+            currentFcIdx = (currentFcIdx - 1 + appData.flashcards.length) % appData.flashcards.length;
+            renderFlashcard();
+        }
+
+        function openFlashcardCreator() {
+            document.getElementById('flashcard-creator-box').classList.toggle('hidden');
+        }
+
+        function addNewFlashcard() {
+            const front = document.getElementById('fc-front').value.trim();
+            const back = document.getElementById('fc-back').value.trim();
+            if (!front || !back) {
+                showToast('Isi bagian depan dan belakang kartu!');
+                return;
+            }
+
+            appData.flashcards.push({ front, back });
+            saveData();
+            
+            document.getElementById('fc-front').value = '';
+            document.getElementById('fc-back').value = '';
+            document.getElementById('flashcard-creator-box').classList.add('hidden');
+            currentFcIdx = appData.flashcards.length - 1;
+            renderFlashcard();
+            showToast('Flashcard baru berhasil disimpan!');
+        }
+
+        // 6. FITUR: TIMER POMODORO
+        let timerInterval = null;
+        let timerSeconds = 25 * 60;
+        let isTimerRunning = false;
+        let timerMode = 'work'; // work or break
+
+        function setTimerMode(mode) {
+            timerMode = mode;
+            stopTimer();
+            if (mode === 'work') {
+                timerSeconds = 25 * 60;
+                document.getElementById('mode-work-btn').className = "px-4 py-1.5 rounded-full text-xs font-semibold bg-indigo-600 text-white transition";
+                document.getElementById('mode-break-btn').className = "px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 transition";
+                document.getElementById('timer-status').innerText = "Waktunya Fokus Belajar!";
+            } else {
+                timerSeconds = 5 * 60;
+                document.getElementById('mode-break-btn').className = "px-4 py-1.5 rounded-full text-xs font-semibold bg-indigo-600 text-white transition";
+                document.getElementById('mode-work-btn').className = "px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 transition";
+                document.getElementById('timer-status').innerText = "Waktunya Istirahat Sejenak!";
+            }
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timerSeconds / 60);
+            const secs = timerSeconds % 60;
+            document.getElementById('timer-display').innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function toggleTimer() {
+            if (isTimerRunning) {
+                stopTimer();
+            } else {
+                startTimer();
+            }
+        }
+
+        function startTimer() {
+            isTimerRunning = true;
+            document.getElementById('timer-toggle-btn').innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i> Jeda Timer`;
+            document.getElementById('timer-toggle-btn').className = "flex-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3.5 px-6 rounded-xl transition text-sm shadow-sm flex items-center justify-center gap-2";
+            lucide.createIcons();
+
+            timerInterval = setInterval(() => {
+                if (timerSeconds > 0) {
+                    timerSeconds--;
+                    updateTimerDisplay();
+                } else {
+                    stopTimer();
+                    if (timerMode === 'work') {
+                        appData.pomodoroCount += 1;
+                        appData.xp += 25;
+                        saveData();
+                        showToast('Sesi Fokus Pomodoro Selesai! (+25 XP)');
+                    } else {
+                        showToast('Waktu istirahat selesai, ayo fokus lagi!');
+                    }
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            isTimerRunning = false;
+            clearInterval(timerInterval);
+            document.getElementById('timer-toggle-btn').innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> Mulai Timer`;
+            document.getElementById('timer-toggle-btn').className = "flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3.5 px-6 rounded-xl transition text-sm shadow-sm flex items-center justify-center gap-2";
+            lucide.createIcons();
+        }
+
+        function resetTimer() {
+            stopTimer();
+            timerSeconds = timerMode === 'work' ? 25 * 60 : 5 * 60;
+            updateTimerDisplay();
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
