@@ -686,21 +686,16 @@
       <div class="text-[11px] text-indigo-100">Asisten belajar berbasis Gemini</div>
     </div>
     <div class="flex items-center gap-2">
-      <button onclick="edumindShowSettings()" title="Pengaturan API" class="p-2 hover:bg-indigo-500 rounded-lg"><i data-lucide="settings" class="w-4 h-4"></i></button>
+      <button onclick="edumindShowSettings()" title="Status koneksi AI" class="p-2 hover:bg-indigo-500 rounded-lg"><i data-lucide="info" class="w-4 h-4"></i></button>
       <button onclick="edumindToggleAI()" title="Tutup" class="p-2 hover:bg-indigo-500 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
   </div>
-  <div id="edumind-ai-settings" class="hidden p-3 border-b border-slate-200 bg-amber-50">
-    <label class="block text-xs font-bold text-slate-700 mb-1">Gemini API Key</label>
-    <input id="edumind-ai-key" type="password" autocomplete="off" placeholder="Tempel API key Gemini di sini" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-indigo-500">
-    <div class="flex gap-2 mt-2">
-      <button onclick="edumindSaveAIKey()" class="bg-indigo-600 text-white rounded-lg px-3 py-2 text-xs font-semibold">Simpan</button>
-      <button onclick="edumindClearAIKey()" class="bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold">Hapus</button>
-    </div>
-    <p class="text-[10px] text-amber-800 mt-2 leading-relaxed">Kunci disimpan di browser ini. Jangan tempel API key ke kode HTML atau unggah key ke GitHub. Untuk website publik, gunakan backend/proxy agar key tidak terlihat pengunjung.</p>
-  </div>
+    <div id="edumind-ai-settings" class="hidden p-3 border-b border-slate-200 bg-emerald-50">
+     <p class="text-xs font-semibold text-emerald-800">AI terhubung otomatis melalui Cloudflare Worker.</p>
+     <p class="text-[10px] text-emerald-700 mt-1 leading-relaxed">Tidak perlu memasukkan API Key atau mengatur apa pun di perangkat ini. Kunci Gemini dikelola di sisi server.</p>
+   </div>
   <div id="edumind-ai-messages">
-    <div class="edumind-ai-bubble edumind-ai-bot">Halo! Aku EduMind AI. Aku bisa bantu menjelaskan materi, membuat rangkuman, latihan soal, dan flashcard. Atur API key Gemini lewat ikon pengaturan untuk mulai.</div>
+    <div class="edumind-ai-bubble edumind-ai-bot">Halo! Aku EduMind AI. Aku bisa bantu menjelaskan materi, membuat rangkuman, latihan soal, dan flashcard. Kamu bisa langsung bertanya tanpa memasukkan API Key.</div>
   </div>
   <div class="border-t border-slate-200 p-3 bg-white">
     <div class="flex gap-2">
@@ -713,57 +708,40 @@
 
 <script>
 (function(){
-  const AI_MODEL = 'gemini-3.5-flash-lite';
-  let chatHistory = [];
   const $ = id => document.getElementById(id);
+  const WORKER_URL = 'https://edumind-ai.friskaratnasari090.workers.dev';
+  let chatHistory = [];
 
   window.edumindToggleAI = function(){
     $('edumind-ai-panel').classList.toggle('open');
     if (window.lucide) lucide.createIcons();
   };
+
   window.edumindShowSettings = function(){
     $('edumind-ai-settings').classList.toggle('hidden');
-    $('edumind-ai-key').value = localStorage.getItem('edumind_gemini_key') || '';
-  };
-  window.edumindSaveAIKey = function(){
-    const key = $('edumind-ai-key').value.trim();
-    if(!key){ alert('Masukkan API key terlebih dahulu.'); return; }
-    localStorage.setItem('edumind_gemini_key', key);
-    $('edumind-ai-settings').classList.add('hidden');
-    edumindAddMessage('bot','API key tersimpan di browser ini. Kamu sudah bisa mulai belajar!');
-  };
-  window.edumindClearAIKey = function(){
-    localStorage.removeItem('edumind_gemini_key');
-    $('edumind-ai-key').value = '';
-    alert('API key lokal dihapus.');
   };
 
-  function getKey(){
-    const key = localStorage.getItem('edumind_gemini_key');
-    if(!key) throw new Error('API key belum diatur. Buka ikon pengaturan di bagian atas chat, lalu masukkan Gemini API key.');
-    return key;
+  function getWorkerUrl(){
+    return WORKER_URL;
   }
+
   async function askGemini(prompt, history){
-    const key = getKey();
-    const contents = (history || []).concat([{role:'user',parts:[{text:prompt}]}]);
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-goog-api-key':key},
-      body:JSON.stringify({
-        contents,
-        systemInstruction:{parts:[{text:'Kamu adalah EduMind, asisten belajar yang ramah untuk pelajar sekolah di Indonesia. Jawab dalam bahasa Indonesia yang jelas, akurat, terstruktur, dan sesuai tingkat pelajar. Jelaskan langkah pengerjaan, jangan mengarang fakta. Jika tidak yakin, katakan dengan jujur.'}]},
-        generationConfig:{temperature:0.6,maxOutputTokens:2048}
-      })
+    const response = await fetch(getWorkerUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, history: Array.isArray(history) ? history : [] })
     });
     const data = await response.json().catch(()=>({}));
     if(!response.ok){
-      const msg = data?.error?.message || `HTTP ${response.status}`;
-      throw new Error(msg + (response.status===400 ? ' Periksa format API key.' : response.status===403 ? ' Periksa akses API/key di Google AI Studio.' : response.status===429 ? ' Batas penggunaan sementara tercapai; coba lagi nanti.' : ''));
+      const msg = data?.error || data?.message || `HTTP ${response.status}`;
+      throw new Error(String(msg) + (response.status===403 ? ' Periksa origin/CORS GitHub Pages di Worker.' : response.status===429 ? ' Batas penggunaan sementara tercapai; coba lagi nanti.' : ''));
     }
-    const answer = data?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim();
-    if(!answer) throw new Error('AI tidak mengirim jawaban. Coba kirim pertanyaan lagi.');
-    return answer;
+    if(typeof data?.answer !== 'string' || !data.answer.trim()){
+      throw new Error('Worker tidak mengirim jawaban. Periksa kode Worker dan konfigurasi Gemini.');
+    }
+    return data.answer.trim();
   }
+
   window.edumindAddMessage = function(role,text){
     const div = document.createElement('div');
     div.className = 'edumind-ai-bubble ' + (role==='user'?'edumind-ai-user':'edumind-ai-bot');
@@ -772,6 +750,7 @@
     $('edumind-ai-messages').scrollTop = $('edumind-ai-messages').scrollHeight;
     return div;
   };
+
   window.edumindSendChat = async function(){
     const input = $('edumind-ai-input');
     const prompt = input.value.trim();
@@ -786,10 +765,12 @@
       chatHistory.push({role:'user',parts:[{text:prompt}]},{role:'model',parts:[{text:answer}]});
       if(chatHistory.length>16) chatHistory = chatHistory.slice(-16);
     }catch(err){ pending.textContent = 'Maaf, AI belum bisa digunakan: '+err.message; }
-    finally{$('edumind-ai-send').disabled=false;$('edumind-ai-messages').scrollTop=$('edumind-ai-messages').scrollHeight;}
+    finally{
+      $('edumind-ai-send').disabled=false;
+      $('edumind-ai-messages').scrollTop=$('edumind-ai-messages').scrollHeight;
+    }
   };
 
-  // Menghubungkan fitur rangkuman lama ke Gemini tanpa menghapus markup/fungsi asli.
   window.generateSummary = async function(){
     const material = $('summary-input').value.trim();
     if(!material){showToast('Masukkan teks materi terlebih dahulu!');return;}
@@ -813,7 +794,7 @@
     if(start<0||end<0) throw new Error('Format soal dari AI tidak terbaca. Coba lagi.');
     return JSON.parse(cleaned.slice(start,end+1));
   }
-  // Generator soal lama kini meminta soal dan kunci jawaban dari Gemini.
+
   window.generatePracticeQuestions = async function(){
     const topic=$('gen-topic').value.trim();
     if(!topic){showToast('Masukkan topik materi terlebih dahulu!');return;}
@@ -821,12 +802,11 @@
     const old=btn?btn.innerHTML:'';
     if(btn){btn.disabled=true;btn.textContent='AI sedang membuat soal...';}
     try{
-      const raw=await askGemini('Buat tepat 5 soal pilihan ganda tentang: '+topic+'. Jika ada materi sumber, patuhi materi itu. Keluarkan HANYA JSON valid dengan bentuk {"questions":[{"q":"pertanyaan","options":["A","B","C","D"],"correct":0,"explanation":"alasan singkat"}]}. correct adalah indeks 0 sampai 3. Pastikan hanya satu jawaban benar.',[]);
+      const raw=await askGemini('Buat tepat 5 soal pilihan ganda tentang: '+topic+'. Keluarkan HANYA JSON valid dengan bentuk {"questions":[{"q":"pertanyaan","options":["A","B","C","D"],"correct":0,"explanation":"alasan singkat"}]}. correct adalah indeks 0 sampai 3. Pastikan hanya satu jawaban benar.',[]);
       const parsed=extractJSON(raw);
       if(!Array.isArray(parsed.questions)||parsed.questions.length===0) throw new Error('AI tidak menghasilkan daftar soal.');
       generatedQuestionsStore=parsed.questions.map(q=>({q:String(q.q),options:q.options.map(String),correct:Number(q.correct),explanation:String(q.explanation||'')}));
-      const list=$('gen-questions-list');
-      list.innerHTML=generatedQuestionsStore.map((item,idx)=>`
+      $('gen-questions-list').innerHTML=generatedQuestionsStore.map((item,idx)=>`
         <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
           <p class="text-sm font-bold text-slate-800">Soal ${idx+1}: ${escapeHTML(item.q)}</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -839,11 +819,11 @@
     }catch(err){showToast('Gagal membuat soal: '+err.message);}
     finally{if(btn){btn.disabled=false;btn.innerHTML=old;if(window.lucide)lucide.createIcons();}}
   };
+
   function escapeHTML(value){
     return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  // Tambahan generator flashcard AI di area pembuat kartu.
   const creator=$('flashcard-creator-box');
   if(creator){
     const aiBox=document.createElement('div');
